@@ -1,6 +1,13 @@
 
 # Appointments app
 
+The platform offers an efficient way for patients to schedule appointments with specialists, such as nutritionists and psychologists. Patients can view specialists' calendars, find available time slots, and provide notes about their issues and preferred appointment locations.
+
+For specialists, the platform maintains a comprehensive history of each patient's appointments and notes, facilitating better-informed consultations. All appointment information is centralized, making it easy to access and manage.
+
+Administrators have control over user management, specialist calendars, and appointment locations. They can also modify the location of specialists for their appointments. Additionally, the platform sends automated reminders and confirmation notifications to patients, ensuring they are kept informed about their appointments.
+
+
 ## Requirements
 
 For building and running the application you need:
