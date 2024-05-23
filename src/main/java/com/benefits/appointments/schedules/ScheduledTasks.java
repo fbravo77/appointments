@@ -36,7 +36,7 @@ public class ScheduledTasks {
   private static final Logger logger = LoggerFactory.getLogger(ScheduledTasks.class);
 
   //@Scheduled(cron = "0 0 8 * * *")
-  @Scheduled(fixedRate = 30000)
+  // @Scheduled(fixedRate = 30000)
   public void reviewPendingAppointmentsAndSendReminder() {
     LocalDateTime now = LocalDateTime.now();
     int REMINDERS_DAY_INTERVAL = 3;
@@ -47,7 +47,7 @@ public class ScheduledTasks {
   }
 
   //@Scheduled(cron = "0 0 8 * * *")
-  @Scheduled(fixedRate = 30000)
+ // @Scheduled(fixedRate = 30000)
   public void reviewPendingAppointmentsAndSendConfirmation() {
     LocalDateTime now = LocalDateTime.now();
     int CONFIRMATION_DAY_INTERVAL = 3;

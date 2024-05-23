@@ -14,6 +14,7 @@ import com.benefits.appointments.security.service.JwtService;
 import jakarta.validation.Valid;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.CrossOrigin;
+import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PostMapping;
 import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
@@ -45,7 +46,7 @@ public class AuthenticationController {
     return ResponseEntity.status(201).body(new StandardResponse("User created", "none"));
   }
 
-  @PostMapping("/reset-password")
+  @PatchMapping("/reset-password")
   public ResponseEntity<StandardResponse> resetPassword(@Valid @RequestBody ResetPasswordReq resetPasswordReq) {
     authenticationService.resetPassword(resetPasswordReq);
     return ResponseEntity.ok(new StandardResponse("Email sent to the user", "none"));
@@ -62,14 +63,14 @@ public class AuthenticationController {
     return ResponseEntity.ok(loginResponse);
   }
 
-  @PostMapping(path = "/change-user-status", consumes = "application/json")
+  @PatchMapping(path = "/change-user-status", consumes = "application/json")
   public ResponseEntity<StandardResponse> changeUserStatus(
       @Valid @RequestBody ChangeUserStatusReq changeUserStatusReq) {
     authenticationService.changeUserStatus(changeUserStatusReq);
     return ResponseEntity.ok(new StandardResponse("User status changed", "none"));
   }
 
-  @PostMapping(path = "/change-password", consumes = "application/json")
+  @PatchMapping(path = "/change-password", consumes = "application/json")
   public ResponseEntity<StandardResponse> changeUserPassword(@Valid @RequestBody ChangeUserPassReq changeUserPassReq) {
     authenticationService.changeUserPassword(changeUserPassReq);
     return ResponseEntity.ok(new StandardResponse("User password changed", "none"));
