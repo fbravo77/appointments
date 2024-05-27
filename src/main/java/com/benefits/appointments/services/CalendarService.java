@@ -1,7 +1,7 @@
 package com.benefits.appointments.services;
 
-import com.benefits.appointments.models.dto.input.AppointmentsReqDTO;
-import com.benefits.appointments.models.dto.output.CalendarEventsResDto;
+import com.benefits.appointments.models.dto.input.CreateAppointmentInputDTO;
+import com.benefits.appointments.models.dto.output.CalendarEventsOutputDTO;
 import com.benefits.appointments.security.service.AuthenticationService;
 import com.github.dozermapper.core.DozerBeanMapperBuilder;
 import com.github.dozermapper.core.Mapper;
@@ -76,7 +76,7 @@ public class CalendarService {
     return credential;
   }
 
-  public List<CalendarEventsResDto> getAvailableDates(String tokenPath) throws GeneralSecurityException, IOException {
+  public List<CalendarEventsOutputDTO> getAvailableDates(String tokenPath) throws GeneralSecurityException, IOException {
     // Build a new authorized API client service.
     boolean isRemote = true;
 
@@ -96,29 +96,29 @@ public class CalendarService {
           .execute();
       List<Event> items = events.getItems();
 
-      List<CalendarEventsResDto> eventsListDto = new ArrayList<>();
+      List<CalendarEventsOutputDTO> eventsListDto = new ArrayList<>();
       if (items.isEmpty()) {
         return eventsListDto;
       } else {
         for (Event event : items) {
-          CalendarEventsResDto calendarEventsResDto = mapper.map(event, CalendarEventsResDto.class);
+          CalendarEventsOutputDTO calendarEventsOutputDTO = mapper.map(event, CalendarEventsOutputDTO.class);
 
           if (event.getStart().getDateTime() != null) {
-            calendarEventsResDto.setStart(event.getStart().getDateTime().toString());
+            calendarEventsOutputDTO.setStart(event.getStart().getDateTime().toString());
           }
           if (event.getEnd().getDateTime() != null) {
-            calendarEventsResDto.setEnd(event.getEnd().getDateTime().toString());
+            calendarEventsOutputDTO.setEnd(event.getEnd().getDateTime().toString());
           }
-          calendarEventsResDto.setCreator(event.getCreator().getEmail());
-          calendarEventsResDto.setOrganizer(event.getOrganizer().getEmail());
-          calendarEventsResDto.setGoogleMeet(event.getHangoutLink());
-          calendarEventsResDto.setDescription(event.getDescription());
+          calendarEventsOutputDTO.setCreator(event.getCreator().getEmail());
+          calendarEventsOutputDTO.setOrganizer(event.getOrganizer().getEmail());
+          calendarEventsOutputDTO.setGoogleMeet(event.getHangoutLink());
+          calendarEventsOutputDTO.setDescription(event.getDescription());
           if (event.getAttendees() != null) {
-            calendarEventsResDto.setAttendeesList(event.getAttendees().stream()
-                .map(x -> (new CalendarEventsResDto.Attendees(x.getEmail(), x.getResponseStatus()))).collect(
+            calendarEventsOutputDTO.setAttendeesList(event.getAttendees().stream()
+                .map(x -> (new CalendarEventsOutputDTO.Attendees(x.getEmail(), x.getResponseStatus()))).collect(
                     Collectors.toList()));
           }
-          eventsListDto.add(calendarEventsResDto);
+          eventsListDto.add(calendarEventsOutputDTO);
         }
       }
       return eventsListDto;
@@ -142,7 +142,7 @@ public class CalendarService {
     }
   }
 
-  public String createMeeting(String tokenPath, AppointmentsReqDTO appointment, String... attendeeEmail) {
+  public String createMeeting(String tokenPath, CreateAppointmentInputDTO appointment, String... attendeeEmail) {
     try {
       String[] recurrence = new String[]{"RRULE:FREQ=DAILY;COUNT=1"};
       Calendar service = getCalendarApi(tokenPath);

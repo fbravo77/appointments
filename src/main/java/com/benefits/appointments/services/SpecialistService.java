@@ -1,11 +1,11 @@
 package com.benefits.appointments.services;
 
-import com.benefits.appointments.models.dto.input.AppUpdateReqDTO;
-import com.benefits.appointments.models.dto.output.AppointmentsResDto;
-import com.benefits.appointments.models.dto.output.CalendarEventsResDto;
-import com.benefits.appointments.models.dto.output.PatientsResponseDTO;
-import com.benefits.appointments.models.dto.output.ProfessionsOutDTO;
-import com.benefits.appointments.models.dto.output.SpecialistOutDTO;
+import com.benefits.appointments.models.dto.input.UpdateAppointmentInputDTO;
+import com.benefits.appointments.models.dto.output.AppointmentOutputDTO;
+import com.benefits.appointments.models.dto.output.CalendarEventsOutputDTO;
+import com.benefits.appointments.models.dto.output.PatientOutputDTO;
+import com.benefits.appointments.models.dto.output.ProfessionOutputDTO;
+import com.benefits.appointments.models.dto.output.SpecialistOutputDTO;
 import com.benefits.appointments.models.entities.Appointment;
 import com.benefits.appointments.models.entities.Profession;
 import com.benefits.appointments.models.entities.Specialist;
@@ -26,8 +26,6 @@ import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Objects;
-import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -52,7 +50,7 @@ public class SpecialistService {
   Mapper mapper = DozerBeanMapperBuilder.buildDefault();
   private static final Logger logger = LogManager.getLogger(SpecialistService.class);
 
-  public List<SpecialistOutDTO> getSpecialists(String professionName) {
+  public List<SpecialistOutputDTO> getSpecialists(String professionName) {
     List<Specialist> specialists;
     if (professionName != null) {
       Profession profession = professionRepository.findByOccupation(ProfessionsEnum.valueOf(professionName))
@@ -61,23 +59,23 @@ public class SpecialistService {
     } else {
       specialists = specialistRepository.findAll();
     }
-    List<SpecialistOutDTO> specialistOutDTOList = new ArrayList<>();
+    List<SpecialistOutputDTO> specialistOutputDTOList = new ArrayList<>();
     for (Specialist currentSpecialist : specialists) {
-      SpecialistOutDTO specialistResponseDTO = new SpecialistOutDTO();
+      SpecialistOutputDTO specialistResponseDTO = new SpecialistOutputDTO();
       specialistResponseDTO.setContactEmail(currentSpecialist.getUser().getWorkEmail());
       specialistResponseDTO.setGender(currentSpecialist.getUser().getGender());
       specialistResponseDTO.setFirstName(currentSpecialist.getUser().getFirstName());
       specialistResponseDTO.setLastName(currentSpecialist.getUser().getLastName());
       specialistResponseDTO.setWorkday(currentSpecialist.getUser().getWorkday());
       specialistResponseDTO.setCurrentLocation(currentSpecialist.getCurrentSite().getName());
-      specialistOutDTOList.add(specialistResponseDTO);
+      specialistOutputDTOList.add(specialistResponseDTO);
     }
-    return specialistOutDTOList;
+    return specialistOutputDTOList;
   }
 
 
-  public List<AppointmentsResDto> getAppointments(String specialistWD, String patientWD) {
-    List<SpecialistOutDTO> specialistOutDTOList = new ArrayList<>();
+  public List<AppointmentOutputDTO> getAppointments(String specialistWD, String patientWD) {
+    List<SpecialistOutputDTO> specialistOutputDTOList = new ArrayList<>();
     List<User> specialist = null, patient = null;
     if (specialistWD != null) {
       specialist = userRepository.findByWorkdayContainingIgnoreCaseAndRole(specialistWD,
@@ -105,44 +103,44 @@ public class SpecialistService {
       appointments = appointmentRepository.findByStartDateBetweenOrderByStartDateDesc(from,to);
     }
 
-    List<AppointmentsResDto> appointmentsResDtoList = new ArrayList<>();
+    List<AppointmentOutputDTO> appointmentOutputDTOList = new ArrayList<>();
     for (Appointment currentAppointment : appointments) {
-      AppointmentsResDto appointmentDTO = new AppointmentsResDto(currentAppointment);
-      appointmentsResDtoList.add(appointmentDTO);
+      AppointmentOutputDTO appointmentDTO = new AppointmentOutputDTO(currentAppointment);
+      appointmentOutputDTOList.add(appointmentDTO);
     }
-    return appointmentsResDtoList;
+    return appointmentOutputDTOList;
   }
 
-  public List<CalendarEventsResDto> getUnavailableDates(String specialistWD)
+  public List<CalendarEventsOutputDTO> getUnavailableDates(String specialistWD)
       throws GeneralSecurityException, IOException {
     User user = userRepository.findByWorkday(specialistWD)
         .orElseThrow(() -> new IllegalArgumentException("Specialist WD not found"));
     return calendarService.getAvailableDates(user.getFirstName() + user.getLastName());
   }
 
-  public List<PatientsResponseDTO> getPatients(String specialistWD) {
-    List<PatientsResponseDTO> patientsResponseDTOS = new ArrayList<>();
+  public List<PatientOutputDTO> getPatients(String specialistWD) {
+    List<PatientOutputDTO> patientOutputDTOS = new ArrayList<>();
     if (specialistWD != null) {
-        patientsResponseDTOS = appointmentRepository.getAppointmentsWithDetails(specialistWD);
+        patientOutputDTOS = appointmentRepository.getAppointmentsWithDetails(specialistWD);
     }
-    return patientsResponseDTOS;
+    return patientOutputDTOS;
   }
 
-  public List<ProfessionsOutDTO> getProfessions() {
+  public List<ProfessionOutputDTO> getProfessions() {
     return specialistRepository.getProfessions();
   }
 
-  public void updateAppointment(AppUpdateReqDTO appUpdateReqDTO) {
-    Appointment appointment = appointmentRepository.findById(appUpdateReqDTO.getId())
+  public void updateAppointment(UpdateAppointmentInputDTO updateAppointmentInputDTO) {
+    Appointment appointment = appointmentRepository.findById(updateAppointmentInputDTO.getId())
         .orElseThrow(() -> new RuntimeException("Appointment not found"));
-    if (appointment.getAttended() != null) {
+    if (appointment.isAttended()) {
       throw new RuntimeException("Appointment already updated");
     }
-    appointment.setAttended(appUpdateReqDTO.getAttended());
-    appointment.setComments(appUpdateReqDTO.getComments());
-    appointment.setPatientState(appUpdateReqDTO.getPatientState());
-    appointment.setEmergencyAppointment(appUpdateReqDTO.getEmergencyAppointment());
-    appointment.setAppointmentReason(appUpdateReqDTO.getAppointmentReason());
+    appointment.setAttended(updateAppointmentInputDTO.getAttended());
+    appointment.setComments(updateAppointmentInputDTO.getComments());
+    appointment.setPatientState(updateAppointmentInputDTO.getPatientState());
+    appointment.setEmergencyAppointment(updateAppointmentInputDTO.getEmergencyAppointment());
+    appointment.setAppointmentReason(updateAppointmentInputDTO.getAppointmentReason());
     appointmentRepository.save(appointment);
   }
 }

@@ -10,6 +10,7 @@ import jakarta.persistence.Column;
 import jakarta.persistence.Entity;
 import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
+import jakarta.persistence.FetchType;
 import jakarta.persistence.JoinColumn;
 import jakarta.persistence.ManyToOne;
 import jakarta.persistence.OneToOne;
@@ -31,26 +32,23 @@ import org.springframework.security.core.userdetails.UserDetails;
   public class User extends BaseEntity implements UserDetails {
 
     @Column(unique = true)
-    protected String workday;
-    protected String firstName;
-    protected String lastName;
+    private String workday;
+    private String firstName;
+    private String lastName;
     private String password;
-    protected String workEmail;
-
-    @Column()
-    protected String personalEmail;
+    private String workEmail;
+    private String personalEmail;
 
     @CreationTimestamp
     @Column(updatable = false, name = "created_at")
-    protected Date createdAt;
+    private Date createdAt;
 
-    @Column(nullable = false)
-    protected Boolean isActive;
+    private boolean isActive;
 
     protected String contactPhone;
     private String gender;
 
-    @ManyToOne(cascade = CascadeType.REMOVE)
+    @ManyToOne()
     @JoinColumn(name = "role_id", referencedColumnName = "id", nullable = false)
     private Role role;
 
@@ -59,11 +57,11 @@ import org.springframework.security.core.userdetails.UserDetails;
     private UserStatus status;
 
     @JsonIgnore
-    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE)
+    @OneToOne(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.REMOVE)
     private Patient patient;
 
     @JsonIgnore
-    @OneToOne(mappedBy = "user", cascade = CascadeType.REMOVE)
+    @OneToOne(fetch = FetchType.LAZY, mappedBy = "user", cascade = CascadeType.REMOVE)
     private Specialist specialist;
 
   @Override

@@ -1,15 +1,11 @@
 package com.benefits.appointments.services;
 
-import static com.fasterxml.jackson.databind.type.LogicalType.DateTime;
-
-import com.benefits.appointments.models.dto.input.AppointmentsReqDTO;
-import com.benefits.appointments.models.dto.input.ConfirmAppointmentReqDTO;
-import com.benefits.appointments.models.dto.output.CalendarEventsResDto;
-import com.benefits.appointments.models.dto.output.CalendarEventsResDto.Attendees;
-import com.benefits.appointments.models.dto.output.PatientAppointmentsValidationResDTO;
-import com.benefits.appointments.models.dto.output.PatientConfirmationResDto;
-import com.benefits.appointments.models.dto.output.PatientsResponseDTO;
-import com.benefits.appointments.models.dto.output.StandardResponse;
+import com.benefits.appointments.models.dto.input.AppointmentConfirmationInputDTO;
+import com.benefits.appointments.models.dto.input.CreateAppointmentInputDTO;
+import com.benefits.appointments.models.dto.output.CalendarEventsOutputDTO;
+import com.benefits.appointments.models.dto.output.PatientAppointmentsDetailOutputDTO;
+import com.benefits.appointments.models.dto.output.AppointmentConfirmationOutputDTO;
+import com.benefits.appointments.models.dto.output.PatientOutputDTO;
 import com.benefits.appointments.models.entities.Appointment;
 import com.benefits.appointments.models.entities.Site;
 import com.benefits.appointments.models.enums.ProfessionsEnum;
@@ -22,21 +18,16 @@ import com.benefits.appointments.security.repository.UserRepository;
 import com.github.dozermapper.core.DozerBeanMapperBuilder;
 import com.github.dozermapper.core.Mapper;
 import jakarta.transaction.Transactional;
-import java.text.ParseException;
 import java.text.SimpleDateFormat;
 import java.time.LocalDate;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.ArrayList;
-import java.util.Arrays;
-import java.util.Date;
 import java.util.List;
 import java.util.Optional;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.beans.factory.annotation.Autowired;
-import org.springframework.cglib.core.Local;
-import org.springframework.http.HttpStatus;
 import org.springframework.stereotype.Service;
 import java.time.ZonedDateTime;
 
@@ -57,7 +48,7 @@ public class PatientService {
   private static final Logger logger = LogManager.getLogger(PatientService.class);
 
   @Transactional
-  public CalendarEventsResDto createAppointment(AppointmentsReqDTO input) {
+  public CalendarEventsOutputDTO createAppointment(CreateAppointmentInputDTO input) {
     try {
       SimpleDateFormat formatter = new SimpleDateFormat("yyyy-MM-dd'T'HH:mm:ss");
       User patientUser = userRepository.findByWorkday(input.getPatientWorkday())
@@ -72,7 +63,7 @@ public class PatientService {
       if(!appointments.isEmpty()) {
         appointmentNumber = appointments.get(0).getAppointmentNumber()  != null ? appointments.get(0).getAppointmentNumber() + 1 : 1;
         if(specialistUser.getSpecialist().getProfession().getOccupation().equals(ProfessionsEnum.PSYCHOLOGIST)) {
-          if(appointmentNumber > 5 && !patientUser.getPatient().getCanCreateMoreAppointments()){
+          if(appointmentNumber > 5 && !patientUser.getPatient().isCanCreateMoreAppointments()){
             throw new RuntimeException("Patient already scheduled the limit of appointments");
           }
         }
@@ -84,7 +75,7 @@ public class PatientService {
       appointment.setAppointmentStatus("Agendada");
       appointmentRepository.save(appointment);
 
-      return new CalendarEventsResDto(patientUser.getWorkEmail(), input.getStartDate(), input.getEndDate(),
+      return new CalendarEventsOutputDTO(patientUser.getWorkEmail(), input.getStartDate(), input.getEndDate(),
           appointment.getGoogleMeeting(), input.getSummary(), LocalDateTime.now().toString(), patientUser.getPersonalEmail());
     } catch (RuntimeException e) {
       logger.error("Error during createAppointment: {}", e.getMessage());
@@ -92,7 +83,7 @@ public class PatientService {
     }
   }
 
-  private Appointment getAppointment(AppointmentsReqDTO input, User patientUser, User specialistUser) {
+  private Appointment getAppointment(CreateAppointmentInputDTO input, User patientUser, User specialistUser) {
     LocalDateTime startDate = ZonedDateTime.parse(input.getStartDate()).toLocalDateTime();
     LocalDateTime endDate = ZonedDateTime.parse(input.getEndDate()).toLocalDateTime();
     Appointment appointment = new Appointment();
@@ -101,7 +92,7 @@ public class PatientService {
     //TODO Validate Date
     appointment.setStartDate(startDate);
     appointment.setEndDate(endDate);
-    appointment.setIsRemote(input.getRemote());
+    appointment.setRemote(input.getRemote());
     appointment.setConfirmationSent(false);
     appointment.setReminderSent(false);
 
@@ -110,26 +101,26 @@ public class PatientService {
       String googleMeet = calendarService.createMeeting(specialistUser.getWorkday(), input, patientUser.getWorkEmail(),
           patientUser.getPersonalEmail(),specialistUser.getWorkEmail(),specialistUser.getPersonalEmail());
 
-    appointment.setTittle(input.getTitle());
+    appointment.setTitle(input.getTitle());
     appointment.setGoogleMeeting(googleMeet);
     appointmentRepository.save(appointment);
     return appointment;
   }
 
-  public List<PatientsResponseDTO> getPatientsByWorkday(String workday) {
+  public List<PatientOutputDTO> getPatientsByWorkday(String workday) {
     List<User> userList = userRepository.findByWorkdayContainingIgnoreCaseAndRole(workday,
         rolRepository.findById(RoleEnum.ROLE_PATIENT.getId()).orElseThrow());
-    List<PatientsResponseDTO> patientsList = new ArrayList<>();
+    List<PatientOutputDTO> patientsList = new ArrayList<>();
     for (User currentUser : userList) {
-      PatientsResponseDTO patientsResponseDTO = mapper.map(currentUser, PatientsResponseDTO.class);
-      patientsResponseDTO.setAccount(currentUser.getPatient().getAccount().getName());
-      patientsResponseDTO.setAge(currentUser.getPatient().getAge());
-      patientsList.add(patientsResponseDTO);
+      PatientOutputDTO patientOutputDTO = mapper.map(currentUser, PatientOutputDTO.class);
+      patientOutputDTO.setAccount(currentUser.getPatient().getAccount().getName());
+      patientOutputDTO.setAge(currentUser.getPatient().getAge());
+      patientsList.add(patientOutputDTO);
     }
     return patientsList;
   }
 
-  public PatientAppointmentsValidationResDTO getAppointmentsValidation(String patientWD) {
+  public PatientAppointmentsDetailOutputDTO getAppointmentsValidation(String patientWD) {
     User patientUser = userRepository.findByWorkdayAndRole(patientWD,
             rolRepository.findById(RoleEnum.ROLE_PATIENT.getId()).get())
         .orElseThrow(() -> new IllegalArgumentException("Patient WD not found"));
@@ -144,7 +135,7 @@ public class PatientService {
       if (currentAppointment.getStartDate().getMonth().equals(now.getMonth())) {
         scheduledForCurrentMonth = true;
       }
-      if (currentAppointment.getCancelled() != null && currentAppointment.getCancelled()) {
+      if (currentAppointment.isCancelled()) {
         cancelledAppointments++;
       }
       if (currentAppointment.getStartDate().isBefore(now) || currentAppointment.getStartDate().getMonth()
@@ -152,15 +143,15 @@ public class PatientService {
         appointmentsCount++;
       }
     }
-    return new PatientAppointmentsValidationResDTO(appointmentsCount, cancelledAppointments, scheduledForCurrentMonth);
+    return new PatientAppointmentsDetailOutputDTO(appointmentsCount, cancelledAppointments, scheduledForCurrentMonth);
   }
 
   @Transactional
-  public void confirmAppointment(ConfirmAppointmentReqDTO input) {
+  public void confirmAppointment(AppointmentConfirmationInputDTO input) {
     try {
       Optional<Appointment> appointment = appointmentRepository.findById(input.getAppointmentId());
       if(appointment.isEmpty()) throw new RuntimeException("No Appointment with that ID");
-      if(appointment.get().getConfirmed() != null || appointment.get().getCancelled() != null)
+      if(appointment.get().isConfirmed() || !appointment.get().isCancelled())
           throw new RuntimeException("Appointment already confirmed");
 
       if(input.getCanceled()){
@@ -182,9 +173,9 @@ public class PatientService {
     }
   }
 
-  public PatientConfirmationResDto findAppointmentById(String appointmentId) {
+  public AppointmentConfirmationOutputDTO findAppointmentById(String appointmentId) {
     Optional<Appointment> appointment = appointmentRepository.findById(Long.valueOf(appointmentId));
     if(appointment.isEmpty()) throw new RuntimeException("Workday id not found");
-    return new PatientConfirmationResDto(appointment.get());
+    return new AppointmentConfirmationOutputDTO(appointment.get());
   }
 }

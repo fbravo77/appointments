@@ -1,6 +1,6 @@
 package com.benefits.appointments.repositories;
 
-import com.benefits.appointments.models.dto.output.ProfessionsOutDTO;
+import com.benefits.appointments.models.dto.output.ProfessionOutputDTO;
 import com.benefits.appointments.models.entities.Profession;
 import com.benefits.appointments.models.entities.Specialist;
 import java.util.List;
@@ -13,7 +13,7 @@ public interface SpecialistRepository extends JpaRepository<Specialist, Long> {
 
   List<Specialist> findByProfession(Profession profession);
 
-  @Query("SELECT NEW com.benefits.appointments.models.dto.output.ProfessionsOutDTO(pf.id, pf.occupation) FROM Profession pf")
-  List<ProfessionsOutDTO> getProfessions();
+  @Query("SELECT NEW com.benefits.appointments.models.dto.output.ProfessionOutputDTO(pf.id, pf.occupation) FROM Profession pf")
+  List<ProfessionOutputDTO> getProfessions();
 
 }

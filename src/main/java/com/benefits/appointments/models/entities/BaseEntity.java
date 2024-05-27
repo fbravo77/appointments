@@ -9,9 +9,6 @@ import lombok.Getter;
 import lombok.Setter;
 import org.hibernate.annotations.GenericGenerator;
 
-/**
- * BASE ENTITY FOR ALL OTHER ENTITIES
- */
 @Setter
 @Getter
 @MappedSuperclass
@@ -19,7 +16,7 @@ public class BaseEntity {
 
     @Id
     @GeneratedValue(strategy = GenerationType.AUTO, generator = "native")
-    @GenericGenerator(name = "native", strategy = "native")
+    @GenericGenerator(name = "native")
     @Column(name = "id", updatable = false, nullable = false)
     public Long id;
 

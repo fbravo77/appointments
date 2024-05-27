@@ -4,7 +4,9 @@ import io.jsonwebtoken.ExpiredJwtException;
 import java.security.SignatureException;
 import java.util.List;
 import java.util.NoSuchElementException;
-import org.springframework.http.HttpStatusCode;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
+import org.springframework.http.HttpStatus;
 import org.springframework.http.ProblemDetail;
 import org.springframework.security.access.AccessDeniedException;
 import org.springframework.security.authentication.AccountStatusException;
@@ -16,67 +18,89 @@ import org.springframework.web.bind.annotation.RestControllerAdvice;
 
 @RestControllerAdvice
 public class GlobalExceptionHandler {
+
+  private static final Logger logger = LoggerFactory.getLogger(GlobalExceptionHandler.class);
+
+  @ExceptionHandler(BadCredentialsException.class)
+  public ProblemDetail handleBadCredentialsException(BadCredentialsException exception) {
+    logException(exception);
+    return createProblemDetail(HttpStatus.UNAUTHORIZED, "The username or password is incorrect",
+        exception.getMessage());
+  }
+
+  @ExceptionHandler(AccountStatusException.class)
+  public ProblemDetail handleAccountStatusException(AccountStatusException exception) {
+    logException(exception);
+    return createProblemDetail(HttpStatus.FORBIDDEN, "The account is locked", exception.getMessage());
+  }
+
+  @ExceptionHandler(AccessDeniedException.class)
+  public ProblemDetail handleAccessDeniedException(AccessDeniedException exception) {
+    logException(exception);
+    return createProblemDetail(HttpStatus.FORBIDDEN, "You are not authorized to access this resource",
+        exception.getMessage());
+  }
+
+  @ExceptionHandler(SignatureException.class)
+  public ProblemDetail handleSignatureException(SignatureException exception) {
+    logException(exception);
+    return createProblemDetail(HttpStatus.FORBIDDEN, "The JWT signature is invalid", exception.getMessage());
+  }
+
+  @ExceptionHandler(ExpiredJwtException.class)
+  public ProblemDetail handleExpiredJwtException(ExpiredJwtException exception) {
+    logException(exception);
+    return createProblemDetail(HttpStatus.FORBIDDEN, "The JWT token has expired", exception.getMessage());
+  }
+
+  @ExceptionHandler(NoSuchElementException.class)
+  public ProblemDetail handleNoSuchElementException(NoSuchElementException exception) {
+    logException(exception);
+    return createProblemDetail(HttpStatus.NOT_FOUND, exception.getMessage(), exception.getMessage());
+  }
+
+  @ExceptionHandler(MethodArgumentNotValidException.class)
+  public ProblemDetail handleMethodArgumentNotValidException(MethodArgumentNotValidException exception) {
+    logException(exception);
+    String errorMessage = processFieldErrors(exception.getBindingResult().getFieldErrors());
+    return createProblemDetail(HttpStatus.BAD_REQUEST, "Invalid request content", errorMessage);
+  }
+
+  @ExceptionHandler(IllegalArgumentException.class)
+  public ProblemDetail handleIllegalArgumentException(IllegalArgumentException exception) {
+    logException(exception);
+    return createProblemDetail(HttpStatus.BAD_REQUEST, exception.getMessage(), exception.getMessage());
+  }
+
+  @ExceptionHandler(RuntimeException.class)
+  public ProblemDetail handleRuntimeException(RuntimeException exception) {
+    logException(exception);
+    return createProblemDetail(HttpStatus.BAD_REQUEST, exception.getMessage(), exception.getMessage());
+  }
+
   @ExceptionHandler(Exception.class)
-  public ProblemDetail handleSecurityException(Exception exception) {
-    ProblemDetail errorDetail = null;
+  public ProblemDetail handleGeneralException(Exception exception) {
+    logException(exception);
+    return createProblemDetail(HttpStatus.INTERNAL_SERVER_ERROR, "Unknown internal server error.",
+        exception.getMessage());
+  }
 
-    // TODO send this stack trace to an observability tool
-    exception.printStackTrace();
+  private void logException(Exception exception) {
+    //Improvement Send this to an observability tool
+    logger.error("Exception: ", exception);
+  }
 
-    if (exception instanceof BadCredentialsException) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(401), exception.getMessage());
-      errorDetail.setProperty("description", "The username or password is incorrect");
-    }
-
-    else if (exception instanceof AccountStatusException) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(403), exception.getMessage());
-      errorDetail.setProperty("description", "The account is locked");
-    }
-
-    else if (exception instanceof AccessDeniedException) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(403), exception.getMessage());
-      errorDetail.setProperty("description", "You are not authorized to access this resource");
-    }
-
-    else if (exception instanceof SignatureException) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(403), exception.getMessage());
-      errorDetail.setProperty("description", "The JWT signature is invalid");
-    }
-
-    else if (exception instanceof ExpiredJwtException) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(403), exception.getMessage());
-      errorDetail.setProperty("description", "The JWT token has expired");
-    }
-    else if (exception instanceof NoSuchElementException) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(404), exception.getMessage());
-      errorDetail.setProperty("description", exception.getMessage());
-    }
-    else if (exception instanceof MethodArgumentNotValidException) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(400), processFieldErrors(((MethodArgumentNotValidException) exception).getBindingResult().getFieldErrors()));
-      errorDetail.setProperty("description", "Invalid request content");
-    }
-    else if (exception instanceof IllegalArgumentException) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(400), exception.getMessage());
-      errorDetail.setProperty("description", exception.getMessage());
-    }
-    else if (exception instanceof RuntimeException) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(400), exception.getMessage());
-      errorDetail.setProperty("description", exception.getMessage());
-    }
-    if (errorDetail == null) {
-      errorDetail = ProblemDetail.forStatusAndDetail(HttpStatusCode.valueOf(500), exception.getMessage());
-      errorDetail.setProperty("description", "Unknown internal server error.");
-    }
-
-    return errorDetail;
+  private ProblemDetail createProblemDetail(HttpStatus status, String description, String detail) {
+    ProblemDetail problemDetail = ProblemDetail.forStatusAndDetail(status, detail);
+    problemDetail.setProperty("description", description);
+    return problemDetail;
   }
 
   private String processFieldErrors(List<FieldError> fieldErrors) {
     StringBuilder errorMessage = new StringBuilder();
-    for (org.springframework.validation.FieldError fieldError: fieldErrors) {
+    for (FieldError fieldError : fieldErrors) {
       errorMessage.append(fieldError.getField()).append(": ").append(fieldError.getDefaultMessage()).append("; ");
     }
     return errorMessage.toString();
   }
-
 }

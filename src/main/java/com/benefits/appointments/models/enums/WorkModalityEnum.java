@@ -17,6 +17,6 @@ public enum WorkModalityEnum {
         return value;
       }
     }
-    return null; // Return null if no enum constant with the given alias is found
+    return null;
   }
 }

@@ -9,12 +9,12 @@ import com.benefits.appointments.repositories.AccountRepository;
 import com.benefits.appointments.repositories.PatientRepository;
 import com.benefits.appointments.repositories.ProfessionRepository;
 import com.benefits.appointments.repositories.SpecialistRepository;
-import com.benefits.appointments.security.dto.ChangeUserPassReq;
-import com.benefits.appointments.security.dto.ChangeUserStatusReq;
-import com.benefits.appointments.security.dto.LoginUserDto;
-import com.benefits.appointments.security.dto.RegisterUserDto;
-import com.benefits.appointments.security.dto.ResetPasswordReq;
-import com.benefits.appointments.security.dto.SignUpDto;
+import com.benefits.appointments.security.dto.ChangeUserPasswordInputDTO;
+import com.benefits.appointments.security.dto.ChangeUserStatusInputDTO;
+import com.benefits.appointments.security.dto.LoginInputDTO;
+import com.benefits.appointments.security.dto.RegisterUserInputDTO;
+import com.benefits.appointments.security.dto.ResetPasswordInputDTO;
+import com.benefits.appointments.security.dto.PatientSignUpInputDTO;
 import com.benefits.appointments.security.entity.Role;
 import com.benefits.appointments.security.entity.User;
 import com.benefits.appointments.security.repository.RolRepository;
@@ -67,7 +67,7 @@ public class AuthenticationService {
   }
 
   @Transactional
-  public void registerAdmin(RegisterUserDto input) {
+  public void registerAdmin(RegisterUserInputDTO input) {
     try {
 
       User user = mapper.map(input, User.class);
@@ -90,7 +90,7 @@ public class AuthenticationService {
   }
 
   @Transactional
-  public void signup(SignUpDto input) {
+  public void signup(PatientSignUpInputDTO input) {
     try {
       User user = userRepository.findByWorkday(input.getWorkday()).orElseThrow(() ->new NoSuchElementException ("No user found for that workday"));
       user.setPassword(passwordEncoder.encode(input.getPassword()));
@@ -107,7 +107,7 @@ public class AuthenticationService {
     }
   }
 
-  public User authenticate(LoginUserDto input) {
+  public User authenticate(LoginInputDTO input) {
     authenticationManager.authenticate(
         new UsernamePasswordAuthenticationToken(
             input.getWorkday(),
@@ -119,7 +119,7 @@ public class AuthenticationService {
         .orElseThrow(() ->new NoSuchElementException ("No user found for that workday"));
   }
 
-  public void resetPassword(ResetPasswordReq input) {
+  public void resetPassword(ResetPasswordInputDTO input) {
     try{
     User user = userRepository.findByWorkday(input.getWorkday()).orElseThrow(() ->new NoSuchElementException ("No user found for that workday"));
     String newPassword = generatePassword(8);
@@ -136,14 +136,14 @@ public class AuthenticationService {
     }
   }
 
-  public void changeUserStatus(ChangeUserStatusReq input) {
+  public void changeUserStatus(ChangeUserStatusInputDTO input) {
     User user = userRepository.findByWorkday(input.getWorkday()).orElseThrow(() ->new NoSuchElementException ("No user found for that workday"));
-    user.setIsActive(input.isActive());
+    user.setActive(input.isActive());
     user.setStatus(input.isActive() ? UserStatus.VERIFIED : UserStatus.LOCKED);
     userRepository.save(user);
   }
 
-  public void changeUserPassword(ChangeUserPassReq input) {
+  public void changeUserPassword(ChangeUserPasswordInputDTO input) {
     User user = userRepository.findByWorkday(input.getWorkday()).orElseThrow(() ->new NoSuchElementException ("No user found for that workday"));
     user.setPassword(passwordEncoder.encode(input.getPassword()));
     user.setStatus(UserStatus.VERIFIED);

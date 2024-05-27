@@ -1,6 +1,6 @@
 package com.benefits.appointments.repositories;
 
-import com.benefits.appointments.models.dto.output.PatientsResponseDTO;
+import com.benefits.appointments.models.dto.output.PatientOutputDTO;
 import com.benefits.appointments.models.entities.Appointment;
 import com.benefits.appointments.security.entity.User;
 import java.time.LocalDateTime;
@@ -29,7 +29,7 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
   List<Appointment> findByStartDateBetweenAndPatient (LocalDateTime to, LocalDateTime from, User patientUser);
 
-  @Query("SELECT NEW com.benefits.appointments.models.dto.output.PatientsResponseDTO(up.firstName, up.workEmail, COUNT(app.attended) AS appointments, " +
+  @Query("SELECT NEW com.benefits.appointments.models.dto.output.PatientOutputDTO(up.firstName, up.workEmail, COUNT(app.attended) AS appointments, " +
       "up.workday, up.lastName, up.contactPhone, up.personalEmail, " +
       "up.gender, up.isActive, up.status, pat.age, ac.name, us.firstName) " +
       "FROM Appointment app " +
@@ -41,6 +41,6 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
       "up.contactPhone, up.personalEmail, up.gender, up.isActive, up.status, " +
       "pat.age, ac.name, app.specialist.id, us.firstName, us.workday " +
       "HAVING us.workday = :specialistWorkday")
-  List<PatientsResponseDTO> getAppointmentsWithDetails(@Param("specialistWorkday") String specialistWorkday);
+  List<PatientOutputDTO> getAppointmentsWithDetails(@Param("specialistWorkday") String specialistWorkday);
 
 }

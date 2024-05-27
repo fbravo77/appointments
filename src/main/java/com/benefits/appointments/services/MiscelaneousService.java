@@ -1,8 +1,7 @@
 package com.benefits.appointments.services;
 
-import com.benefits.appointments.models.dto.output.AppointmentsResDto;
-import com.benefits.appointments.models.dto.output.SitesResponseDTO;
-import com.benefits.appointments.models.entities.Site;
+import com.benefits.appointments.models.dto.output.AppointmentOutputDTO;
+import com.benefits.appointments.models.dto.output.SiteOutputDTO;
 import com.benefits.appointments.repositories.AppointmentRepository;
 import com.benefits.appointments.repositories.SiteRepository;
 import java.util.List;
@@ -18,12 +17,12 @@ public class MiscelaneousService {
   @Autowired
   AppointmentRepository appointmentRepository;
 
-  public List<SitesResponseDTO> getAllSites() {
-    return siteRepository.findAll().stream().map(x -> new SitesResponseDTO(x.getId(), x.getName()))
+  public List<SiteOutputDTO> getAllSites() {
+    return siteRepository.findAll().stream().map(x -> new SiteOutputDTO(x.getId(), x.getName()))
         .collect(Collectors.toList());
   }
 
-  public AppointmentsResDto getAppointmentById(Long id){
-    return new AppointmentsResDto(appointmentRepository.findById(id).orElseThrow(() -> new RuntimeException("Appointment not found")));
+  public AppointmentOutputDTO getAppointmentById(Long id){
+    return new AppointmentOutputDTO(appointmentRepository.findById(id).orElseThrow(() -> new RuntimeException("Appointment not found")));
   }
 }

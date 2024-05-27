@@ -1,11 +1,13 @@
 package com.benefits.appointments.controllers;
 
-import com.benefits.appointments.models.dto.output.AppointmentsResDto;
-import com.benefits.appointments.models.dto.output.PatientConfirmationResDto;
-import com.benefits.appointments.models.dto.output.SitesResponseDTO;
+import com.benefits.appointments.models.dto.output.AppointmentOutputDTO;
+import com.benefits.appointments.models.dto.output.AppointmentConfirmationOutputDTO;
+import com.benefits.appointments.models.dto.output.SiteOutputDTO;
 import com.benefits.appointments.services.MiscelaneousService;
 import com.benefits.appointments.services.PatientService;
 import java.util.List;
+import org.slf4j.Logger;
+import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.http.ResponseEntity;
 import org.springframework.security.access.prepost.PreAuthorize;
@@ -18,26 +20,40 @@ import org.springframework.web.bind.annotation.RestController;
 @CrossOrigin(origins = "*")
 public class MiscellaneousController {
 
-  @Autowired
-  PatientService patientService;
+  private final PatientService patientService;
+  private final MiscelaneousService miscelaneousService;
+  private static final Logger logger = LoggerFactory.getLogger(MiscellaneousController.class);
 
   @Autowired
-  MiscelaneousService miscelaneousService;
+  public MiscellaneousController(PatientService patientService, MiscelaneousService miscelaneousService) {
+    this.patientService = patientService;
+    this.miscelaneousService = miscelaneousService;
+  }
 
   @GetMapping("/appointments/confirmation-details")
-  public ResponseEntity<PatientConfirmationResDto> findAppointmentById(@RequestParam(name = "id", required = true) String appointmentId) {
-    return ResponseEntity.ok(patientService.findAppointmentById(appointmentId));
+  public ResponseEntity<AppointmentConfirmationOutputDTO> findAppointmentById(
+      @RequestParam(name = "id", required = true) String appointmentId)
+  {
+    logger.info("Fetching appointment= {}", appointmentId);
+    AppointmentConfirmationOutputDTO patientConfirmationResponse = patientService.findAppointmentById(appointmentId);
+    return ResponseEntity.ok(patientConfirmationResponse);
   }
 
   @GetMapping("/sites")
   @PreAuthorize("hasRole('ROLE_ADMIN')")
-  public ResponseEntity<List<SitesResponseDTO>> getAllSites() {
-    return ResponseEntity.ok(miscelaneousService.getAllSites());
+  public ResponseEntity<List<SiteOutputDTO>> getAllSites() {
+    logger.info("Fetching all sites");
+    List<SiteOutputDTO> sitesResponse = miscelaneousService.getAllSites();
+    return ResponseEntity.ok(sitesResponse);
   }
 
   @GetMapping("/appointments")
   @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_SPECIALIST')")
-  public ResponseEntity<AppointmentsResDto> getAppointment(@RequestParam(name = "id", required = true) Long appointmentId) {
-    return ResponseEntity.ok(miscelaneousService.getAppointmentById(appointmentId));
+  public ResponseEntity<AppointmentOutputDTO> getAppointment(
+      @RequestParam(name = "id", required = true) Long appointmentId)
+  {
+    logger.info("Fetching appointment for confirmation = {}", appointmentId);
+    AppointmentOutputDTO appointment = miscelaneousService.getAppointmentById(appointmentId);
+    return ResponseEntity.ok(appointment);
   }
 }
