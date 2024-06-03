@@ -39,6 +39,7 @@ public class PatientController {
   }
 
   @PostMapping("/create-appointment")
+  @PreAuthorize("hasAnyRole('ROLE_PATIENT','ROLE_ADMIN')")
   public ResponseEntity<CalendarEventsOutputDTO> createAppointment(@Valid @RequestBody CreateAppointmentInputDTO appointment) {
     logger.info("Creating appointment");
     CalendarEventsOutputDTO response = patientService.createAppointment(appointment);

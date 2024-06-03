@@ -13,7 +13,7 @@ public class AppointmentOutputDTO {
   private String googleMeeting;
   private String site;
   private boolean attended;
-  private int patientState;
+  private Integer patientState;
   private String comments;
   private boolean isExpired;
   private String location;
@@ -24,6 +24,9 @@ public class AppointmentOutputDTO {
   private String specialistFullName;
   private Integer appointmentNumber;
   private String appointmentStatus;
+  private String appointmentReason;
+  private boolean emergencyAppointment;
+  private boolean specialistUpdated;
 
   public AppointmentOutputDTO(Appointment appointment){
     this.id = appointment.getId();
@@ -43,5 +46,9 @@ public class AppointmentOutputDTO {
     this.isCanceled = appointment.isCancelled();
     this.appointmentNumber = appointment.getAppointmentNumber();
     this.appointmentStatus = appointment.getAppointmentStatus();
+    this.appointmentReason = appointment.getAppointmentReason();
+    this.patientState = appointment.getPatientState() == null ? null : appointment.getPatientState();
+    this.emergencyAppointment = appointment.isEmergencyAppointment();
+    this.specialistUpdated = appointment.isSpecialistUpdated();
   }
 }

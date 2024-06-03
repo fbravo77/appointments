@@ -1,5 +1,6 @@
 package com.benefits.appointments.models.entities;
 
+import com.benefits.appointments.models.dto.input.UpdateAppointmentInputDTO;
 import com.benefits.appointments.security.entity.User;
 import com.fasterxml.jackson.annotation.JsonIgnore;
 import jakarta.persistence.Column;
@@ -44,4 +45,14 @@ public class Appointment extends BaseEntity{
   private boolean emergencyAppointment;
   private Integer appointmentNumber;
   private String appointmentStatus;
+  private boolean specialistUpdated;
+
+  public void updateAppointmentDetails(UpdateAppointmentInputDTO updateAppointmentInputDTO) {
+    this.attended = updateAppointmentInputDTO.getAttended();
+    this.comments = this.comments + " " + updateAppointmentInputDTO.getComments();
+    this.patientState = updateAppointmentInputDTO.getPatientState();
+    this.emergencyAppointment = updateAppointmentInputDTO.getEmergencyAppointment();
+    this.appointmentReason = updateAppointmentInputDTO.getAppointmentReason();
+    this.specialistUpdated = true;
+  }
 }

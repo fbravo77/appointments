@@ -49,6 +49,21 @@ public class ScheduledTasks {
     logger.info("reviewPendingAppointmentsAndSendConfirmation Task performed at {} emails sent: {}", now, appointmentList.size());
   }
 
+  //@Scheduled(cron = "0 0 8 * * *")
+  //@Scheduled(fixedRate = 50000)
+  public void changeToExpireAppointments() {
+    LocalDateTime now = LocalDateTime.now();
+    List<Appointment> appointmentList = appointmentRepository.findByStartDateBetweenOrderByStartDateDesc(now.minusDays(1),
+        now);
+    for(Appointment appointment : appointmentList){
+      if(appointment.getStartDate().isBefore(now) && !appointment.isExpired()) {
+        appointment.setExpired(true);
+        appointmentRepository.save(appointment);
+      }
+    }
+    logger.info("changeToExpireAppointments list size: {}", appointmentList.size());
+  }
+
   private void processAppointments(List<Appointment> appointmentList, String taskType, LocalDateTime now, int interval) {
     for (Appointment appointment : appointmentList) {
       LocalDateTime appointmentDate = appointment.getStartDate();

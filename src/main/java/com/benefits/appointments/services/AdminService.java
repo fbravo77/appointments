@@ -1,10 +1,10 @@
 package com.benefits.appointments.services;
 
-import com.benefits.appointments.models.dto.input.UserBatchRegisterInputDTO;
-import com.benefits.appointments.models.dto.output.UserBatchRegisterOutputDTO;
 import com.benefits.appointments.models.dto.input.UpdateSpecialistLocationInputDTO;
+import com.benefits.appointments.models.dto.input.UserBatchRegisterInputDTO;
 import com.benefits.appointments.models.dto.output.AppointmentOutputDTO;
 import com.benefits.appointments.models.dto.output.PatientOutputDTO;
+import com.benefits.appointments.models.dto.output.UserBatchRegisterOutputDTO;
 import com.benefits.appointments.models.entities.Account;
 import com.benefits.appointments.models.entities.Appointment;
 import com.benefits.appointments.models.entities.Patient;
@@ -24,41 +24,44 @@ import com.benefits.appointments.security.repository.RolRepository;
 import com.benefits.appointments.security.repository.UserRepository;
 import com.github.dozermapper.core.DozerBeanMapperBuilder;
 import com.github.dozermapper.core.Mapper;
-import jakarta.transaction.Transactional;
 import java.time.LocalDateTime;
 import java.time.Month;
 import java.util.ArrayList;
 import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
-import java.util.Optional;
+import java.util.NoSuchElementException;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
-import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.stereotype.Service;
+import org.springframework.transaction.annotation.Transactional;
 
 @Service
 public class AdminService {
 
-  @Autowired
-  UserRepository userRepository;
-  @Autowired
-  RolRepository roleRepository;
-  @Autowired
-  AccountRepository accountRepository;
-  @Autowired
-  PatientRepository patientRepository;
-  @Autowired
-  SiteRepository siteRepository;
-  @Autowired
-  AppointmentRepository appointmentRepository;
-
-  @Autowired
-  SpecialistRepository specialistRepository;
-
-  Mapper mapper = DozerBeanMapperBuilder.buildDefault();
+  private final UserRepository userRepository;
+  private final RolRepository roleRepository;
+  private final AccountRepository accountRepository;
+  private final PatientRepository patientRepository;
+  private final SiteRepository siteRepository;
+  private final AppointmentRepository appointmentRepository;
+  private final SpecialistRepository specialistRepository;
+  private final Mapper mapper = DozerBeanMapperBuilder.buildDefault();
   private static final Logger logger = LogManager.getLogger(AdminService.class);
 
+  public AdminService(UserRepository userRepository, RolRepository roleRepository, AccountRepository accountRepository,
+                      PatientRepository patientRepository, SiteRepository siteRepository,
+                      AppointmentRepository appointmentRepository, SpecialistRepository specialistRepository) {
+    this.userRepository = userRepository;
+    this.roleRepository = roleRepository;
+    this.accountRepository = accountRepository;
+    this.patientRepository = patientRepository;
+    this.siteRepository = siteRepository;
+    this.appointmentRepository = appointmentRepository;
+    this.specialistRepository = specialistRepository;
+  }
+
+  @Transactional(readOnly = true)
   public List<PatientOutputDTO> getAllPatients() {
     List<PatientOutputDTO> patientsList = new ArrayList<>();
     List<User> userList = userRepository.findByRole(
@@ -77,68 +80,74 @@ public class AdminService {
   public List<UserBatchRegisterOutputDTO> uploadPatientsBatch(List<UserBatchRegisterInputDTO> input) {
     try {
       List<UserBatchRegisterOutputDTO> responseList = new ArrayList<>();
-      List<String>usersCreatedList = new ArrayList<>();
-      Role patientRole = roleRepository.findById(RoleEnum.ROLE_PATIENT.getId()).get();
-      Map<String,Integer> usersWorkdayMap = new HashMap<>();
-      StringBuilder errorsOnInput = new StringBuilder();
-      for(UserBatchRegisterInputDTO currentInput : input) {
-        int repeatCounter = usersWorkdayMap.getOrDefault(currentInput.getWorkday(), 0) + 1;
-        usersWorkdayMap.put(currentInput.getWorkday(),repeatCounter);
-        if(repeatCounter > 1){
-          if(errorsOnInput.isEmpty()) errorsOnInput.append("Repeated workdays: ");
-          errorsOnInput.append(currentInput.getWorkday()).append(",");
-        }
-        if(currentInput.getAccountName() == null || currentInput.getAccountName().isEmpty()){
-          errorsOnInput.append(" Account empty for Workday: ").append(currentInput.getAccountName());
-        }
+      List<String> usersCreatedList = new ArrayList<>();
+      Role patientRole = roleRepository.findById(RoleEnum.ROLE_PATIENT.getId()).orElseThrow(NoSuchElementException::new);
+      Map<String, Integer> usersWorkdayMap = validateBatchInput(input);
+      List<String> usersInDB = userRepository.findByWorkdayInAndRoleAndIsActive(usersWorkdayMap.keySet(), patientRole, true);
+      createNewUsers(input, usersInDB, usersCreatedList, patientRole, responseList);
+      List<User> removedUsers = userRepository.findByWorkdayNotInAndRoleAndIsActive(usersCreatedList, patientRole, true);
+      lockUsers(removedUsers, responseList);
+      return responseList;
+    } catch (Exception e) {
+      logger.error("Error during uploadPatientsBatch", e);
+      throw e;
+    }
+  }
+
+  private Map<String, Integer> validateBatchInput(List<UserBatchRegisterInputDTO> input) {
+    StringBuilder errorsOnInput = new StringBuilder();
+    Map<String, Integer> usersWorkdayMap = new HashMap<>();
+    for (UserBatchRegisterInputDTO currentInput : input) {
+      int repeatCounter = usersWorkdayMap.getOrDefault(currentInput.getWorkday(), 0) + 1;
+      usersWorkdayMap.put(currentInput.getWorkday(), repeatCounter);
+      if (repeatCounter > 1) {
+        if (errorsOnInput.isEmpty()) errorsOnInput.append("Repeated workdays: ");
+        errorsOnInput.append(currentInput.getWorkday()).append(",");
       }
-      if(!errorsOnInput.isEmpty()){
-        throw new IllegalArgumentException(errorsOnInput.toString().endsWith(",") ? errorsOnInput.substring(0,errorsOnInput.length()-1) : errorsOnInput.toString());
+      if (currentInput.getAccountName() == null || currentInput.getAccountName().isEmpty()) {
+        errorsOnInput.append(" Account empty for Workday: ").append(currentInput.getWorkday()).append(",");
       }
-      List<String> usersInDB = userRepository.findByWorkdayInAndRoleAndIsActive(usersWorkdayMap.keySet(),patientRole,true);
+    }
+    if (!errorsOnInput.isEmpty()) {
+      throw new IllegalArgumentException(errorsOnInput.toString().replaceAll(",$", ""));
+    }
+    return usersWorkdayMap;
+  }
 
-      for(UserBatchRegisterInputDTO currentInput: input) {
-        UserBatchRegisterOutputDTO currentRes = new UserBatchRegisterOutputDTO();
-        if (usersInDB.contains(currentInput.getWorkday())) {
-          usersCreatedList.add(currentInput.getWorkday());
-          continue;
-        }
-        User user = mapper.map(currentInput, User.class);
-
-        user.setRole(patientRole);
-        user.setActive(true);
-        user.setStatus(UserStatus.UPLOADED_NOT_REGISTERED);
-
-        user = userRepository.save(user);
-
-
-        Optional<Account> account = accountRepository.findByName(currentInput.getAccountName());
-        Optional<Site> site = siteRepository.findByName(currentInput.getSite());
-
-        Patient patient = new Patient(user,
-            account.orElseGet(
-                () -> accountRepository.save(
-                    new Account(currentInput.getAccountName(), currentInput.getAccountName()))),
-            currentInput.getPreferredName(),
-            currentInput.getAge(),
-            false,
-            WorkModalityEnum.findByAlias(currentInput.getWorkModality()),
-            site.orElseGet(() -> siteRepository.save(new Site(currentInput.getSite(), currentInput.getSite()))));
-
-        patientRepository.save(patient);
-        //RESPONSE
-        currentRes.setFullName(currentInput.getPreferredName());
-        currentRes.setWorkday(currentInput.getWorkday());
-        currentRes.setStatus("User created");
-        responseList.add(currentRes);
+  private void createNewUsers(List<UserBatchRegisterInputDTO> input, List<String> usersInDB, List<String> usersCreatedList,
+                         Role patientRole, List<UserBatchRegisterOutputDTO> responseList) {
+    for (UserBatchRegisterInputDTO currentInput : input) {
+      UserBatchRegisterOutputDTO currentRes = new UserBatchRegisterOutputDTO();
+      if (usersInDB.contains(currentInput.getWorkday())) {
         usersCreatedList.add(currentInput.getWorkday());
+        continue;
       }
-      List<User> removedUsers = userRepository.findByWorkdayNotInAndRoleAndIsActive(usersCreatedList, patientRole,
-          true);
-      for (User currentUser : removedUsers) {
-        if (currentUser.getStatus().equals(UserStatus.LOCKED)) {
-          continue;
-        }
+      User user = mapper.map(currentInput, User.class);
+      user.setRole(patientRole);
+      user.setActive(true);
+      user.setStatus(UserStatus.UPLOADED_NOT_REGISTERED);
+      user = userRepository.save(user);
+
+      Account account = accountRepository.findByName(currentInput.getAccountName())
+          .orElseGet(() -> accountRepository.save(new Account(currentInput.getAccountName(), currentInput.getAccountName())));
+      Site site = siteRepository.findByName(currentInput.getSite())
+          .orElseGet(() -> siteRepository.save(new Site(currentInput.getSite(), currentInput.getSite())));
+
+      Patient patient = new Patient(user, account, currentInput.getPreferredName(), currentInput.getAge(),
+          false, WorkModalityEnum.findByAlias(currentInput.getWorkModality()), site);
+
+      patientRepository.save(patient);
+
+      currentRes.setFullName(currentInput.getPreferredName());
+      currentRes.setWorkday(currentInput.getWorkday());
+      currentRes.setStatus("User created");
+      responseList.add(currentRes);
+      usersCreatedList.add(currentInput.getWorkday());
+    }
+  }
+
+  private void lockUsers(List<User> removedUsers, List<UserBatchRegisterOutputDTO> responseList) {
+    for (User currentUser : removedUsers) {
         currentUser.setStatus(UserStatus.LOCKED);
         currentUser.setActive(false);
         UserBatchRegisterOutputDTO currentRes = new UserBatchRegisterOutputDTO();
@@ -147,14 +156,10 @@ public class AdminService {
         currentRes.setFullName(currentUser.getFirstName());
         responseList.add(currentRes);
         userRepository.save(currentUser);
-      }
-      return responseList;
-    } catch (Exception e) {
-      logger.error("Error during uploadPatientsBatch: {}", e.getMessage());
-      throw e;
     }
   }
 
+  @Transactional(readOnly = true)
   public List<AppointmentOutputDTO> getPatientsAppointments(String specialistWD) {
     List<User> specialistUser = userRepository.findByWorkdayContainingIgnoreCaseAndRole(specialistWD,
         roleRepository.findById(RoleEnum.ROLE_SPECIALIST.getId())
@@ -171,8 +176,8 @@ public class AdminService {
   }
 
   public void updateSpecialistLocation (UpdateSpecialistLocationInputDTO input){
-    Site site = siteRepository.findByName(input.getSite()).orElseThrow(() -> new RuntimeException("Site not found"));
-    Specialist specialist =  userRepository.findByWorkday(input.getWorkday()).orElseThrow(() -> new RuntimeException("Specialist not found")).getSpecialist();
+    Site site = siteRepository.findByName(input.getSite()).orElseThrow(() -> new NoSuchElementException("Site not found"));
+    Specialist specialist =  userRepository.findByWorkday(input.getWorkday()).orElseThrow(() -> new NoSuchElementException("Specialist not found")).getSpecialist();
     specialist.setCurrentSite(site);
     specialistRepository.save(specialist);
   }

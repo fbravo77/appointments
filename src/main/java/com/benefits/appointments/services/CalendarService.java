@@ -33,7 +33,6 @@ import java.io.InputStreamReader;
 import java.security.GeneralSecurityException;
 import java.time.LocalDateTime;
 import java.time.ZoneId;
-import java.util.ArrayList;
 import java.util.Arrays;
 import java.util.Collections;
 import java.util.List;
@@ -41,51 +40,55 @@ import java.util.Objects;
 import java.util.stream.Collectors;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
+import org.springframework.beans.factory.annotation.Value;
 import org.springframework.stereotype.Service;
 
 @Service
 public class CalendarService {
 
   private static final JsonFactory JSON_FACTORY = GsonFactory.getDefaultInstance();
-  private static final String TOKENS_DIRECTORY_PATH = "src/main/resources/tokens";
-  private static final String CREDENTIALS_FILE_PATH = "src/main/resources/credentials.json";
   private static final List<String> SCOPES = Collections.singletonList(CalendarScopes.CALENDAR);
   private static final String APPLICATION_NAME = "Google Calendar API Java Quickstart";
-  Mapper mapper = DozerBeanMapperBuilder.buildDefault();
   private static final Logger logger = LogManager.getLogger(CalendarService.class);
+  private final NetHttpTransport httpTransport;
+  private final String tokensDirectoryPath;
+  private final String credentialsFilePath;
+  private final Mapper mapper = DozerBeanMapperBuilder.buildDefault();
 
-  private static Credential getCredentials(final NetHttpTransport HTTP_TRANSPORT, String credentialsForUser)
-      throws IOException {
-    // Load client secrets.
-    File initialFile = new File(CREDENTIALS_FILE_PATH);
+  public CalendarService(@Value("${google.api.tokens.directory}") String tokensDirectoryPath,
+                         @Value("${google.api.credentials.file}") String credentialsFilePath) throws GeneralSecurityException, IOException {
+    this.tokensDirectoryPath = tokensDirectoryPath;
+    this.credentialsFilePath = credentialsFilePath;
+    this.httpTransport = GoogleNetHttpTransport.newTrustedTransport();
+  }
+
+  private Credential getCredentials(String credentialsForUser) throws IOException {
+    File initialFile = new File(credentialsFilePath);
     InputStream in = new FileInputStream(initialFile);
-    // InputStream in = AppointmentsApplication.class.getResourceAsStream(credentialsForUser);
     GoogleClientSecrets clientSecrets = GoogleClientSecrets.load(JSON_FACTORY, new InputStreamReader(in));
 
-    // Build flow and trigger user authorization request.
-    GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(
-        HTTP_TRANSPORT, JSON_FACTORY, clientSecrets, SCOPES)
-        .setDataStoreFactory(
-            new FileDataStoreFactory(new java.io.File(TOKENS_DIRECTORY_PATH + "/" + credentialsForUser)))
+    GoogleAuthorizationCodeFlow flow = new GoogleAuthorizationCodeFlow.Builder(httpTransport, JSON_FACTORY, clientSecrets, SCOPES)
+        .setDataStoreFactory(new FileDataStoreFactory(new java.io.File(tokensDirectoryPath + "/" + credentialsForUser)))
         .setAccessType("offline")
         .build();
+
     LocalServerReceiver receiver = new LocalServerReceiver.Builder().setPort(8888).build();
     Credential credential = new AuthorizationCodeInstalledApp(flow, receiver).authorize("user");
     credential.refreshToken();
-    //returns an authorized Credential object.
     return credential;
   }
 
+  private Calendar getCalendarApi(String tokenPath) throws IOException {
+    return new Calendar.Builder(httpTransport, JSON_FACTORY, getCredentials(tokenPath))
+        .setApplicationName(APPLICATION_NAME)
+        .build();
+  }
+
   public List<CalendarEventsOutputDTO> getAvailableDates(String tokenPath) throws GeneralSecurityException, IOException {
-    // Build a new authorized API client service.
-    boolean isRemote = true;
-
     Calendar service = getCalendarApi(tokenPath);
-
-    // List the next 10 events from the primary calendar.
     DateTime now = new DateTime(System.currentTimeMillis());
-    DateTime end = new DateTime(
-        LocalDateTime.now().plusDays(30L).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+    DateTime end = new DateTime(LocalDateTime.now().plusDays(30L).atZone(ZoneId.systemDefault()).toInstant().toEpochMilli());
+
     try {
       Events events = service.events().list("primary")
           .setMaxResults(200)
@@ -94,92 +97,55 @@ public class CalendarService {
           .setOrderBy("startTime")
           .setSingleEvents(true)
           .execute();
-      List<Event> items = events.getItems();
 
-      List<CalendarEventsOutputDTO> eventsListDto = new ArrayList<>();
-      if (items.isEmpty()) {
-        return eventsListDto;
-      } else {
-        for (Event event : items) {
-          CalendarEventsOutputDTO calendarEventsOutputDTO = mapper.map(event, CalendarEventsOutputDTO.class);
-
-          if (event.getStart().getDateTime() != null) {
-            calendarEventsOutputDTO.setStart(event.getStart().getDateTime().toString());
-          }
-          if (event.getEnd().getDateTime() != null) {
-            calendarEventsOutputDTO.setEnd(event.getEnd().getDateTime().toString());
-          }
-          calendarEventsOutputDTO.setCreator(event.getCreator().getEmail());
-          calendarEventsOutputDTO.setOrganizer(event.getOrganizer().getEmail());
-          calendarEventsOutputDTO.setGoogleMeet(event.getHangoutLink());
-          calendarEventsOutputDTO.setDescription(event.getDescription());
-          if (event.getAttendees() != null) {
-            calendarEventsOutputDTO.setAttendeesList(event.getAttendees().stream()
-                .map(x -> (new CalendarEventsOutputDTO.Attendees(x.getEmail(), x.getResponseStatus()))).collect(
-                    Collectors.toList()));
-          }
-          eventsListDto.add(calendarEventsOutputDTO);
+      return events.getItems().stream().map(event -> {
+        CalendarEventsOutputDTO calendarEventsOutputDTO = mapper.map(event, CalendarEventsOutputDTO.class);
+        if (event.getStart().getDateTime() != null) {
+          calendarEventsOutputDTO.setStart(event.getStart().getDateTime().toString());
         }
-      }
-      return eventsListDto;
+        if (event.getEnd().getDateTime() != null) {
+          calendarEventsOutputDTO.setEnd(event.getEnd().getDateTime().toString());
+        }
+        calendarEventsOutputDTO.setCreator(event.getCreator().getEmail());
+        calendarEventsOutputDTO.setOrganizer(event.getOrganizer().getEmail());
+        calendarEventsOutputDTO.setGoogleMeet(event.getHangoutLink());
+        calendarEventsOutputDTO.setDescription(event.getDescription());
+        if (event.getAttendees() != null) {
+          calendarEventsOutputDTO.setAttendeesList(event.getAttendees().stream()
+              .map(x -> new CalendarEventsOutputDTO.Attendees(x.getEmail(), x.getResponseStatus()))
+              .collect(Collectors.toList()));
+        }
+        return calendarEventsOutputDTO;
+      }).collect(Collectors.toList());
     } catch (IOException e) {
-      logger.error(e);
-      return null;
-    }
-  }
-
-  private static Calendar getCalendarApi(String tokenPath) {
-    try {
-      final NetHttpTransport HTTP_TRANSPORT = GoogleNetHttpTransport.newTrustedTransport();
-
-      return new Calendar.Builder(HTTP_TRANSPORT, JSON_FACTORY,
-          getCredentials(HTTP_TRANSPORT, tokenPath))
-          .setApplicationName(APPLICATION_NAME)
-          .build();
-    } catch (Exception e) {
-      logger.error("Error: " + e);
-      return null;
+      logger.error("Error fetching available dates: {}", e.getMessage());
+      throw e;
     }
   }
 
   public String createMeeting(String tokenPath, CreateAppointmentInputDTO appointment, String... attendeeEmail) {
     try {
-      String[] recurrence = new String[]{"RRULE:FREQ=DAILY;COUNT=1"};
       Calendar service = getCalendarApi(tokenPath);
-      DateTime startDateTime = new DateTime(appointment.getStartDate());
-      EventDateTime start = new EventDateTime()
-          .setDateTime(startDateTime)
-          .setTimeZone("America/Los_Angeles");
-
-      DateTime endDateTime = new DateTime(appointment.getEndDate());
-      EventDateTime endT = new EventDateTime()
-          .setDateTime(endDateTime)
-          .setTimeZone("America/Los_Angeles");
 
       Event event = new Event()
           .setSummary(appointment.getSummary())
           .setLocation(appointment.getRemote() ? "remote" : appointment.getLocation())
           .setDescription(appointment.getDescription())
-          .setStart(start)
-          .setEnd(endT)
-          .setRecurrence(Arrays.asList(recurrence))
-          .setAttendees(
-              Arrays.stream(attendeeEmail).filter(Objects::nonNull).map(x -> new EventAttendee().setEmail(x)).collect(Collectors.toList()));
+          .setStart(new EventDateTime().setDateTime(new DateTime(appointment.getStartDate())).setTimeZone("America/Los_Angeles"))
+          .setEnd(new EventDateTime().setDateTime(new DateTime(appointment.getEndDate())).setTimeZone("America/Los_Angeles"))
+          .setRecurrence(Collections.singletonList("RRULE:FREQ=DAILY;COUNT=1"))
+          .setAttendees(Arrays.stream(attendeeEmail).filter(Objects::nonNull).map(email -> new EventAttendee().setEmail(email)).collect(Collectors.toList()));
 
-      //MEET
-      String calendarId = "primary";
-      ConferenceSolutionKey conferenceSKey = new ConferenceSolutionKey();
-      conferenceSKey.setType("hangoutsMeet");
-      CreateConferenceRequest createConferenceReq = new CreateConferenceRequest();
-      createConferenceReq.setRequestId(AuthenticationService.generatePassword(15));
-      createConferenceReq.setConferenceSolutionKey(conferenceSKey);
       ConferenceData conferenceData = new ConferenceData();
-      conferenceData.setCreateRequest(createConferenceReq);
+      conferenceData.setCreateRequest(new CreateConferenceRequest()
+          .setRequestId(AuthenticationService.generatePassword(15))
+          .setConferenceSolutionKey(new ConferenceSolutionKey().setType("hangoutsMeet")));
       event.setConferenceData(conferenceData);
-      event = service.events().insert(calendarId, event).setConferenceDataVersion(1).execute();
+
+      event = service.events().insert("primary", event).setConferenceDataVersion(1).execute();
       return event.getHangoutLink();
     } catch (Exception e) {
-      logger.error("Error: " + e);
+      logger.error("Error creating meeting: {}", e.getMessage());
       return null;
     }
   }

@@ -23,6 +23,8 @@ public interface AppointmentRepository extends JpaRepository<Appointment, Long> 
 
   List<Appointment> findByStartDateBetweenOrderByStartDateDesc(LocalDateTime to, LocalDateTime fr);
 
+  List<Appointment> findByStartDateBetweenAndAppointmentStatusOrderByStartDateDesc(LocalDateTime to, LocalDateTime fr,String status);
+
   List<Appointment> findByStartDateBetweenAndReminderSent(LocalDateTime to, LocalDateTime from, Boolean reminderSent);
 
   List<Appointment> findByStartDateBetweenAndConfirmationSent(LocalDateTime to, LocalDateTime from, Boolean confirmationSent);

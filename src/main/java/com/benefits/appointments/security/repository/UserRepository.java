@@ -13,15 +13,12 @@ import org.springframework.stereotype.Repository;
 public interface UserRepository extends CrudRepository<User, Integer> {
   Optional<User> findByWorkday(String workday);
   Optional<User> findByWorkdayAndRole(String workday,Role role);
-  List<User> findByRoleAndIsActive(Role role, boolean active);
+
   List<User> findByRole(Role role);
   List<User> findByWorkdayContainingIgnoreCaseAndRole(String workday,Role role);
   List<User> findByWorkdayNotInAndRoleAndIsActive(List<String> workdays,Role role,boolean active);
 
   @Query("SELECT u.workday FROM User u WHERE u.workday IN ?1 AND u.role = ?2 AND u.isActive  = ?3")
   List<String> findByWorkdayInAndRoleAndIsActive(Set<String> workdays, Role role, boolean active);
-
-  @Query("SELECT u.workday FROM User u WHERE u.workday = ?1")
-  String findByWorkdayExists(String workday);
 
 }

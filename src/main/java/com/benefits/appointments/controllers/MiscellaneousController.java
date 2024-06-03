@@ -3,7 +3,7 @@ package com.benefits.appointments.controllers;
 import com.benefits.appointments.models.dto.output.AppointmentOutputDTO;
 import com.benefits.appointments.models.dto.output.AppointmentConfirmationOutputDTO;
 import com.benefits.appointments.models.dto.output.SiteOutputDTO;
-import com.benefits.appointments.services.MiscelaneousService;
+import com.benefits.appointments.services.MiscellaneousService;
 import com.benefits.appointments.services.PatientService;
 import java.util.List;
 import org.slf4j.Logger;
@@ -21,13 +21,13 @@ import org.springframework.web.bind.annotation.RestController;
 public class MiscellaneousController {
 
   private final PatientService patientService;
-  private final MiscelaneousService miscelaneousService;
+  private final MiscellaneousService miscellaneousService;
   private static final Logger logger = LoggerFactory.getLogger(MiscellaneousController.class);
 
   @Autowired
-  public MiscellaneousController(PatientService patientService, MiscelaneousService miscelaneousService) {
+  public MiscellaneousController(PatientService patientService, MiscellaneousService miscellaneousService) {
     this.patientService = patientService;
-    this.miscelaneousService = miscelaneousService;
+    this.miscellaneousService = miscellaneousService;
   }
 
   @GetMapping("/appointments/confirmation-details")
@@ -43,7 +43,7 @@ public class MiscellaneousController {
   @PreAuthorize("hasRole('ROLE_ADMIN')")
   public ResponseEntity<List<SiteOutputDTO>> getAllSites() {
     logger.info("Fetching all sites");
-    List<SiteOutputDTO> sitesResponse = miscelaneousService.getAllSites();
+    List<SiteOutputDTO> sitesResponse = miscellaneousService.getAllSites();
     return ResponseEntity.ok(sitesResponse);
   }
 
@@ -53,7 +53,7 @@ public class MiscellaneousController {
       @RequestParam(name = "id", required = true) Long appointmentId)
   {
     logger.info("Fetching appointment for confirmation = {}", appointmentId);
-    AppointmentOutputDTO appointment = miscelaneousService.getAppointmentById(appointmentId);
+    AppointmentOutputDTO appointment = miscellaneousService.getAppointmentById(appointmentId);
     return ResponseEntity.ok(appointment);
   }
 }
