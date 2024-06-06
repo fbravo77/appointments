@@ -7,13 +7,17 @@ import jakarta.persistence.Enumerated;
 import jakarta.persistence.Table;
 import jakarta.persistence.Column;
 import com.benefits.appointments.models.enums.RoleEnum;
+import lombok.AllArgsConstructor;
 import lombok.Data;
 import lombok.EqualsAndHashCode;
+import lombok.NoArgsConstructor;
 
 @Data
 @Entity
 @Table(name = "ROLES")
 @EqualsAndHashCode(callSuper = true)
+@AllArgsConstructor
+@NoArgsConstructor
 public class Role extends BaseEntity {
 
   @Enumerated(EnumType.STRING)
