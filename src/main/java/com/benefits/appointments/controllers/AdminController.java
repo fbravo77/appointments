@@ -9,6 +9,7 @@ import com.benefits.appointments.models.dto.output.StandardResponse;
 import com.benefits.appointments.services.AdminService;
 import com.benefits.appointments.services.SpecialistService;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,18 +29,12 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(path = "/admin", produces = "application/json")
 @PreAuthorize("hasRole('ROLE_ADMIN')")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class AdminController {
 
   private final AdminService adminService;
   private final SpecialistService specialistService;
   private static final Logger logger = LoggerFactory.getLogger(AdminController.class);
-
-  @Autowired
-  public AdminController(AdminService adminService, SpecialistService specialistService) {
-    this.adminService = adminService;
-    this.specialistService = specialistService;
-  }
-
   @GetMapping("/patients")
   public ResponseEntity<List<PatientOutputDTO>> getAllPatients() {
     logger.info("Fetching all patients");

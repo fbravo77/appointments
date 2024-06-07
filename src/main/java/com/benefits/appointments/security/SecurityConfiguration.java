@@ -37,6 +37,8 @@ public class SecurityConfiguration {
             .permitAll()
             .requestMatchers("/appointments/confirmation-details")
             .permitAll()
+            .requestMatchers("/actuator/**")
+            .permitAll()
             .anyRequest()
             .authenticated()
         )

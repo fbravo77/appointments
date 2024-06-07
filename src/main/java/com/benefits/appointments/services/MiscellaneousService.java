@@ -7,22 +7,19 @@ import com.benefits.appointments.repositories.SiteRepository;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class MiscellaneousService {
 
   private final SiteRepository siteRepository;
   private final AppointmentRepository appointmentRepository;
   private static final Logger logger = LoggerFactory.getLogger(MiscellaneousService.class);
-
-  public MiscellaneousService(SiteRepository siteRepository, AppointmentRepository appointmentRepository) {
-    this.siteRepository = siteRepository;
-    this.appointmentRepository = appointmentRepository;
-  }
 
   @Transactional(readOnly = true)
   public List<SiteOutputDTO> getAllSites() {

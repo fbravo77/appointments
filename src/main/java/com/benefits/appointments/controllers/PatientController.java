@@ -9,6 +9,7 @@ import com.benefits.appointments.models.dto.output.StandardResponse;
 import com.benefits.appointments.services.PatientService;
 import jakarta.validation.Valid;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -28,16 +29,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(path = "/patients", produces = "application/json")
 @PreAuthorize("hasRole('ROLE_PATIENT')")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class PatientController {
 
   private final PatientService patientService;
   private static final Logger logger = LoggerFactory.getLogger(PatientController.class);
-
-  @Autowired
-  public PatientController(PatientService patientService) {
-    this.patientService = patientService;
-  }
-
   @PostMapping("/create-appointment")
   @PreAuthorize("hasAnyRole('ROLE_PATIENT','ROLE_ADMIN')")
   public ResponseEntity<CalendarEventsOutputDTO> createAppointment(@Valid @RequestBody CreateAppointmentInputDTO appointment) {

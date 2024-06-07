@@ -6,6 +6,7 @@ import com.benefits.appointments.models.dto.output.SiteOutputDTO;
 import com.benefits.appointments.services.MiscellaneousService;
 import com.benefits.appointments.services.PatientService;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.beans.factory.annotation.Autowired;
@@ -18,17 +19,12 @@ import org.springframework.web.bind.annotation.RestController;
 
 @RestController
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class MiscellaneousController {
 
   private final PatientService patientService;
   private final MiscellaneousService miscellaneousService;
   private static final Logger logger = LoggerFactory.getLogger(MiscellaneousController.class);
-
-  @Autowired
-  public MiscellaneousController(PatientService patientService, MiscellaneousService miscellaneousService) {
-    this.patientService = patientService;
-    this.miscellaneousService = miscellaneousService;
-  }
 
   @GetMapping("/appointments/confirmation-details")
   public ResponseEntity<AppointmentConfirmationOutputDTO> findAppointmentById(

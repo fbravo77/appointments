@@ -31,12 +31,15 @@ import java.util.HashMap;
 import java.util.List;
 import java.util.Map;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class AdminService {
 
   private final UserRepository userRepository;
@@ -49,31 +52,18 @@ public class AdminService {
   private final Mapper mapper = DozerBeanMapperBuilder.buildDefault();
   private static final Logger logger = LogManager.getLogger(AdminService.class);
 
-  public AdminService(UserRepository userRepository, RolRepository roleRepository, AccountRepository accountRepository,
-                      PatientRepository patientRepository, SiteRepository siteRepository,
-                      AppointmentRepository appointmentRepository, SpecialistRepository specialistRepository) {
-    this.userRepository = userRepository;
-    this.roleRepository = roleRepository;
-    this.accountRepository = accountRepository;
-    this.patientRepository = patientRepository;
-    this.siteRepository = siteRepository;
-    this.appointmentRepository = appointmentRepository;
-    this.specialistRepository = specialistRepository;
-  }
-
   @Transactional(readOnly = true)
   public List<PatientOutputDTO> getAllPatients() {
     List<PatientOutputDTO> patientsList = new ArrayList<>();
     List<User> userList = userRepository.findByRole(
         roleRepository.findById(RoleEnum.ROLE_PATIENT.getId())
             .orElseThrow());
-    for (User currentUser : userList) {
-      PatientOutputDTO patientOutputDTO = mapper.map(currentUser, PatientOutputDTO.class);
-      patientOutputDTO.setAccount(currentUser.getPatient().getAccount().getName());
-      patientOutputDTO.setAge(currentUser.getPatient().getAge() != null ? currentUser.getPatient().getAge() : 0);
-      patientsList.add(patientOutputDTO);
-    }
-    return patientsList;
+    return userList.stream().map(user -> {
+      PatientOutputDTO patient = mapper.map(user, PatientOutputDTO.class);
+      patient.setAccount(user.getPatient().getAccount().getName());
+      patient.setAge(user.getPatient().getAge() != null ? user.getPatient().getAge() : 0);
+      return patient;
+    }).collect(Collectors.toList());
   }
 
   @Transactional
@@ -167,12 +157,7 @@ public class AdminService {
     LocalDateTime now = LocalDateTime.now();
     LocalDateTime from = LocalDateTime.of(now.getYear(), Month.JANUARY,1,0,0);
     List<Appointment> appointments = appointmentRepository.findBySpecialistInAndStartDateBetweenOrderByStartDateDesc(specialistUser,now,from);
-    List<AppointmentOutputDTO> appointmentOutputDTOList = new ArrayList<>();
-    for (Appointment appointment : appointments) {
-      AppointmentOutputDTO appointmentDTO = new AppointmentOutputDTO(appointment);
-      appointmentOutputDTOList.add(appointmentDTO);
-    }
-    return appointmentOutputDTOList;
+    return appointments.stream().map(AppointmentOutputDTO::new).collect(Collectors.toList());
   }
 
   public void updateSpecialistLocation (UpdateSpecialistLocationInputDTO input){

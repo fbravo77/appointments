@@ -25,6 +25,8 @@ import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
 import java.util.Optional;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.security.core.userdetails.UsernameNotFoundException;
@@ -32,6 +34,7 @@ import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 
 @Service
+@RequiredArgsConstructor
 public class PatientService {
 
   private final RolRepository rolRepository;
@@ -42,19 +45,8 @@ public class PatientService {
   private final Mapper mapper = DozerBeanMapperBuilder.buildDefault();
   private static final Logger logger = LogManager.getLogger(PatientService.class);
 
-  public PatientService(RolRepository rolRepository, UserRepository userRepository,
-                        AppointmentRepository appointmentRepository, SiteRepository siteRepository,
-                        CalendarService calendarService) {
-    this.rolRepository = rolRepository;
-    this.userRepository = userRepository;
-    this.appointmentRepository = appointmentRepository;
-    this.siteRepository = siteRepository;
-    this.calendarService = calendarService;
-  }
-
   @Transactional
   public CalendarEventsOutputDTO createAppointment(CreateAppointmentInputDTO input) {
-    try {
       User patientUser = userRepository.findByWorkday(input.getPatientWorkday())
           .orElseThrow(() -> new UsernameNotFoundException("patient Workday not found"));
       User specialistUser = userRepository.findByWorkday(input.getSpecialistWorkday())
@@ -74,13 +66,8 @@ public class PatientService {
       appointment.setAppointmentNumber(appointmentNumber);
       appointment.setAppointmentStatus("Agendada");
       appointmentRepository.save(appointment);
-
       return new CalendarEventsOutputDTO(patientUser.getWorkEmail(), input.getStartDate(), input.getEndDate(),
           appointment.getGoogleMeeting(), input.getSummary(), LocalDateTime.now().toString(), patientUser.getPersonalEmail());
-    } catch (RuntimeException e) {
-      logger.error("Error during createAppointment: {}", e.getMessage());
-      throw e;
-    }
   }
 
   private static int getAppointmentNumber(List<Appointment> appointments, User specialistUser, User patientUser) {
@@ -123,14 +110,13 @@ public class PatientService {
   public List<PatientOutputDTO> getPatientsByWorkday(String workday) {
     List<User> userList = userRepository.findByWorkdayContainingIgnoreCaseAndRole(workday,
         rolRepository.findById(RoleEnum.ROLE_PATIENT.getId()).orElseThrow());
-    List<PatientOutputDTO> patientsList = new ArrayList<>();
-    for (User currentUser : userList) {
-      PatientOutputDTO patientOutputDTO = mapper.map(currentUser, PatientOutputDTO.class);
-      patientOutputDTO.setAccount(currentUser.getPatient().getAccount().getName());
-      patientOutputDTO.setAge(currentUser.getPatient().getAge());
-      patientsList.add(patientOutputDTO);
-    }
-    return patientsList;
+
+    return userList.stream().map(user -> {
+      PatientOutputDTO patient = mapper.map(user, PatientOutputDTO.class);
+      patient.setAccount(user.getPatient().getAccount().getName());
+      patient.setAge(user.getPatient().getAge());
+      return patient;
+    }).collect(Collectors.toList());
   }
 
   @Transactional(readOnly = true)
@@ -161,7 +147,7 @@ public class PatientService {
 
   @Transactional
   public void confirmAppointment(AppointmentConfirmationInputDTO input) {
-    try {
+
       Optional<Appointment> appointment = appointmentRepository.findById(input.getAppointmentId());
       if (appointment.isEmpty()) throw new RuntimeException("No Appointment with that ID");
       if (appointment.get().isConfirmed() || !appointment.get().isCancelled())
@@ -179,10 +165,6 @@ public class PatientService {
       }
       appointmentRepository.save(appointment.get());
 
-    } catch (RuntimeException e) {
-      logger.error("Error during confirmAppointment: {}", e.getMessage());
-      throw e;
-    }
   }
 
   @Transactional(readOnly = true)

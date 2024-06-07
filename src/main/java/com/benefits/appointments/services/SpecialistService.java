@@ -27,11 +27,14 @@ import java.time.Month;
 import java.util.ArrayList;
 import java.util.List;
 import java.util.NoSuchElementException;
+import java.util.stream.Collectors;
+import lombok.RequiredArgsConstructor;
 import org.apache.logging.log4j.LogManager;
 import org.apache.logging.log4j.Logger;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 @Service
+@RequiredArgsConstructor
 public class SpecialistService {
   private final SpecialistRepository specialistRepository;
   private final ProfessionRepository professionRepository;
@@ -42,25 +45,13 @@ public class SpecialistService {
   private final Mapper mapper = DozerBeanMapperBuilder.buildDefault();
   private static final Logger logger = LogManager.getLogger(SpecialistService.class);
 
-  public SpecialistService(SpecialistRepository specialistRepository, ProfessionRepository professionRepository,
-                           AppointmentRepository appointmentRepository, UserRepository userRepository,
-                           RolRepository roleRepository, CalendarService calendarService) {
-    this.specialistRepository = specialistRepository;
-    this.professionRepository = professionRepository;
-    this.appointmentRepository = appointmentRepository;
-    this.userRepository = userRepository;
-    this.roleRepository = roleRepository;
-    this.calendarService = calendarService;
-  }
   @Transactional(readOnly = true)
   public List<SpecialistOutputDTO> getSpecialists(String professionName) {
     List<Specialist> specialists = findSpecialistsByProfession(professionName);
-    List<SpecialistOutputDTO> specialistOutputDTOList = new ArrayList<>();
-    for (Specialist currentSpecialist : specialists) {
-      SpecialistOutputDTO specialistResponseDTO = new SpecialistOutputDTO(currentSpecialist.getUser());
-      specialistOutputDTOList.add(specialistResponseDTO);
-    }
-    return specialistOutputDTOList;
+    return specialists
+        .stream()
+        .map(specialist -> new SpecialistOutputDTO(specialist.getUser()))
+        .collect(Collectors.toList());
   }
 
   private List<Specialist> findSpecialistsByProfession(String professionName) {
@@ -78,13 +69,9 @@ public class SpecialistService {
     List<User> specialists = findUsersByWorkdayAndRole(specialistWD, RoleEnum.ROLE_SPECIALIST);
     List<User> patients = findUsersByWorkdayAndRole(patientWD, RoleEnum.ROLE_PATIENT);
     List<Appointment> appointments = findAppointments(specialists, patients);
-
-    List<AppointmentOutputDTO> appointmentOutputDTOList = new ArrayList<>();
-    for (Appointment currentAppointment : appointments) {
-      AppointmentOutputDTO appointmentDTO = new AppointmentOutputDTO(currentAppointment);
-      appointmentOutputDTOList.add(appointmentDTO);
-    }
-    return appointmentOutputDTOList;
+    return appointments.stream()
+        .map(AppointmentOutputDTO::new)
+        .collect(Collectors.toList());
   }
 
   private List<User> findUsersByWorkdayAndRole(String workday, RoleEnum role) {

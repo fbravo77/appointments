@@ -12,6 +12,7 @@ import jakarta.validation.Valid;
 import java.io.IOException;
 import java.security.GeneralSecurityException;
 import java.util.List;
+import lombok.RequiredArgsConstructor;
 import org.slf4j.Logger;
 import org.slf4j.LoggerFactory;
 import org.springframework.http.ResponseEntity;
@@ -29,15 +30,11 @@ import org.springframework.web.bind.annotation.RestController;
 @RequestMapping(path = "/specialists", produces = "application/json")
 @PreAuthorize("hasRole('ROLE_SPECIALIST')")
 @CrossOrigin(origins = "*")
+@RequiredArgsConstructor
 public class SpecialistController {
 
   private final SpecialistService specialistService;
   private static final Logger logger = LoggerFactory.getLogger(SpecialistController.class);
-
-  public SpecialistController(SpecialistService specialistService) {
-    this.specialistService = specialistService;
-  }
-
   @GetMapping()
   @PreAuthorize("hasAnyRole('ROLE_ADMIN','ROLE_PATIENT','ROLE_SPECIALIST')")
   public ResponseEntity<List<SpecialistOutputDTO>> getSpecialists(
